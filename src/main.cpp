@@ -1,5 +1,6 @@
 #include <YDLidar.h>
-
+#include <table.h>
+#include <MsTimer2.h>
 // You need to create an driver instance
 YDLidar lidar;
 
@@ -13,8 +14,23 @@ void setMotorSpeed(float vol){
   uint8_t PWM = (uint8_t)(51*vol);
   analogWrite(YDLIDAR_MOTOR_SCTP, PWM);
 }
+int truc=0;
 
+ void affichetab(){
+   truc++;
+   Serial.println("tablau1");
+   Serial.println(truc);
+   Serial.println();
 
+   for(int i=0;i<100;i++){
+     for(int j=0;j<150;j++){
+       Serial.print(table[j][i]);
+       table[j][i]=0;
+     }
+     Serial.println();
+ }
+ initTable();
+}
 void restartScan(){
     device_info deviceinfo;
     if (lidar.getDeviceInfo(deviceinfo, 100) == RESULT_OK) {
@@ -54,7 +70,7 @@ void restartScan(){
             minv = 0;
           }
 
-
+          /*
           Serial.print("Firmware version:");
           Serial.print(maxv,DEC);
           Serial.print(".");
@@ -80,18 +96,18 @@ void restartScan(){
 
           Serial.print("[YDLIDAR INFO] Current Scan Frequency:");
           Serial.print(freq,DEC);
-          Serial.println("Hz");
+          Serial.println("Hz");*/
           delay(100);
           device_health healthinfo;
           if (lidar.getHealth(healthinfo, 100) == RESULT_OK){
              // detected...
-              Serial.print("[YDLIDAR INFO] YDLIDAR running correctly! The health status:");
-              Serial.println( healthinfo.status==0?"well":"bad");
+              //Serial.print("[YDLIDAR INFO] YDLIDAR running correctly! The health status:");
+              //Serial.println( healthinfo.status==0?"well":"bad");
               if(lidar.startScan() == RESULT_OK){
                 isScanning = true;
                 //start motor in 1.8v
 		        setMotorSpeed(1.8);
-		digitalWrite(YDLIDAR_MOTRO_EN, HIGH);
+	/*	digitalWrite(YDLIDAR_MOTRO_EN, HIGH);
                 Serial.println("Now YDLIDAR is scanning ......");
               //delay(1000);
               }else{
@@ -104,46 +120,74 @@ void restartScan(){
 
        }else{
              Serial.println("YDLIDAR get DeviceInfo Error!!!");
-       }
+       }*/
+}}}}
+
+void initTable(){
+  //definition des tassots sur la table2020 et initialise le tableau
+
+  for (int  i=93;i<100;i++){
+    table[45][i]=0x01;
+    table[46][i]=1;
+  }
+
+  for (int   i=85;i<100;i++){
+    table[75][i]=1;
+    table[76][i]=1;
+  }
+
+  for (int   i=93;i<100;i++){
+    table[105][i]=1;
+    table[106][i]=1;
+  }
 }
 
-
+void posEnemi(int posx,int posy){
+  for(int i = posx-5;i<posx+5;i++){
+    table[i][posy-5]=2;
+  }
+  for(int i = posx-5;i<posx+5;i++){
+    table[i][posy+5]=2;
+  }
+  for(int i = posy-5;i<posy+5;i++){
+    table[posx-5][i]=2;
+  }
+  for(int i = posy-5;i<posy+5;i++){
+    table[posx+5][i]=2;
+  }
+}
 void setup() {
 
-  //f4,s4:115200
-  //g4:230400
-  //x4:128000
-  // bind the YDLIDAR driver to the arduino hardware serial
+
   lidar.begin(Serial2, 128000);
-//output mode
+
   pinMode(YDLIDAR_MOTOR_SCTP, OUTPUT);
   pinMode(YDLIDAR_MOTRO_EN, OUTPUT);
-Serial.begin(9600);
-
-  while(Serial.read() >= 0){};
-
+  initTable();
+  Serial.begin(9600);
+  MsTimer2::set(10000,affichetab);
+  MsTimer2::start();
 }
 
 void loop() {
     if(isScanning){
       if (lidar.waitScanDot() == RESULT_OK) {
           float distance = lidar.getCurrentScanPoint().distance; //distance value in mm unit
-          float angle    = lidar.getCurrentScanPoint().angle; //anglue value in degree
-          byte  quality  = lidar.getCurrentScanPoint().quality; //quality of the current measurement
-	  bool  startBit = lidar.getCurrentScanPoint().startBit;
-          /*Serial.print("current angle:");
-          Serial.println(angle, DEC);
-          Serial.print("current distance:");
-          Serial.println(distance, DEC);*/
-          if(((360-15)<angle||angle<=15)&&distance<300&&distance!=0){Serial.println("robot devant capitaine! %");Serial.println(distance, DEC);}
-
+          float angle    = lidar.getCurrentScanPoint().angle; //anglue value in degrees
+          if(((360-15)<angle||angle<=15)&&distance<300&&distance!=0){
+            //Serial.println("robot devant capitaine! %");
+            //Serial.println(distance, DEC);
+            int posxenemi= distance*cos(angle);
+            int posyenemi= distance*sin(angle);
+            posEnemi(posxenemi,posyenemi);
+                //Serial.println(table);
+          }
       }else{
-         Serial.println(" YDLIDAR get Scandata failed!!");
+         //Serial.println(" YDLIDAR get Scandata failed!!");
       }
     }else{
         //stop motor
-	    digitalWrite(YDLIDAR_MOTRO_EN, LOW);
-	    setMotorSpeed(0);
+
 	    restartScan();
     }
 
